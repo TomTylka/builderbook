@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const marked = require('marked');
 const he = require('he');
 const hljs = require('highlight.js');
+const Purchase = require('./Purchase');
 // const Book = require('./Book');
 const generateSlug = require('../utils/slugify');
 
@@ -161,7 +162,7 @@ const mongoSchema = new Schema({
 });
 
 class ChapterClass {
-  static async getBySlug({ bookSlug, chapterSlug }) {
+  static async getBySlug({ bookSlug, chapterSlug, userId, isAdmin }) {
     const book = await Book.getBySlug({ slug: bookSlug });
     if (!book) {
       throw new Error('Book not found');
@@ -175,6 +176,18 @@ class ChapterClass {
 
     const chapterObj = chapter.toObject();
     chapterObj.book = book;
+
+    if (userId) {
+      const purchase = await Purchase.findOne({ userId, bookId: book._id });
+
+      chapterObj.isPurchased = !!purchase || isAdmin;
+    }
+
+    const isFreeOrPurchased = chapter.isFree || chapterObj.isPurchased;
+
+    if (!isFreeOrPurchased) {
+      delete chapterObj.htmlContent;
+    }
 
     return chapterObj;
   }
